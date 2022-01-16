@@ -2,7 +2,8 @@ const puppeteer = require("puppeteer");
 const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");
 dotenv.config();
-// console.log(process.env);
+require("events").EventEmitter.defaultMaxListeners = 15;
+
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -19,10 +20,31 @@ const mailOptions = {
 };
 
 async function BBScrape(url) {
-  const browser = await puppeteer.launch();
-  const page = await browser.newPage();
-
+  const browser = await puppeteer.launch({
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-accelerated-2d-canvas",
+      "--no-zygote",
+      "--single-process", // <- this one doesn't work in Windows
+      "--disable-gpu",
+    ],
+  });
+  const page = (await browser.pages())[0];
   await page.setDefaultNavigationTimeout(0);
+  await page.setRequestInterception(true);
+
+  //if the page makes a  request to a resource type of image or stylesheet then abort that request
+  page.on("request", (request) => {
+    if (
+      request.resourceType() === "image" ||
+      request.resourceType() === "stylesheet"
+    )
+      request.abort();
+    else request.continue();
+  });
+
   try {
     await page.setUserAgent(
       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4691.0 Safari/537.36"
@@ -66,9 +88,6 @@ async function BBScrape(url) {
 const scrapeAddresses = {
   BB: [
     "https://www.bestbuy.com/site/gigabyte-nvidia-geforce-rtx-3080-aorus-master-10gb-rev-2-0-gddr6x-pci-express-4-0-graphics-card/6462198.p?skuId=6462198",
-    "https://www.bestbuy.com/site/gigabyte-nvidia-geforce-rtx-3080-aorus-master-10gb-gddr6x-pci-express-4-0-graphics-card/6436223.p?skuId=6436223",
-    "https://www.bestbuy.com/site/gigabyte-nvidia-geforce-rtx-3080-gaming-oc-10gb-gddr6x-pci-express-4-0-graphics-card/6430620.p?skuId=6430620",
-    "https://www.bestbuy.com/site/gigabyte-nvidia-geforce-rtx-3080-eagle-oc-10gb-gddr6x-pci-express-4-0-graphics-card/6430621.p?skuId=6430621",
     "https://www.bestbuy.com/site/asus-geforce-rtx-3080-10gb-gddr6x-pci-express-4-0-strix-graphics-card-black/6432445.p?skuId=6432445",
     "https://www.bestbuy.com/site/evga-rtx-3080-12gb-ftw3-ultra-gaming-12g-p5-4877-kl-pci-express-4-0-lhr/6494860.p?skuId=6494860",
     "https://www.bestbuy.com/site/msi-nvidia-geforce-rtx-3080-ventus-3x-10g-oc-bv-gddr6x-pci-express-4-0-graphic-card-black-sliver/6430175.p?skuId=6430175",
@@ -81,12 +100,10 @@ const scrapeAddresses = {
     "https://www.bestbuy.com/site/gigabyte-nvidia-geforce-rtx-3080-vision-oc-10gb-gddr6x-pci-express-4-0-graphics-card/6436219.p?skuId=6436219",
     "https://www.bestbuy.com/site/evga-rtx-3080-xc3-ultra-gaming-10g-p5-3885-kh-pci-express-4-0-lhr/6471615.p?skuId=6471615",
     "https://www.bestbuy.com/site/nvidia-geforce-rtx-3080-10gb-gddr6x-pci-express-4-0-graphics-card-titanium-and-black/6429440.p?skuId=6429440",
-    "https://www.bestbuy.com/site/asus-tuf-rtx3080ti-12gb-gddr6-pci-express-4-0-graphics-card-black/6466932.p?skuId=6466932",
   ],
 };
 
 const intervalFunc = (addressArray, scraper) => {
-  // console.log("the length of the address array is:", addressArray.length);
   for (let i = 0; i <= addressArray.length - 1; i++) {
     scraper(addressArray[i]);
   }
@@ -94,4 +111,4 @@ const intervalFunc = (addressArray, scraper) => {
 
 setInterval(() => {
   intervalFunc(scrapeAddresses.BB, BBScrape);
-}, 30000);
+}, 45000);
