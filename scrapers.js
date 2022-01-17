@@ -84,11 +84,11 @@ async function BBScrape(url) {
     const titleHInnerText = await titleHandle.getProperty("textContent");
     const titleValue = await titleHInnerText.jsonValue();
 
-    const elementHandle = await page.$(
+    const buttonHandle = await page.$(
       "div.fulfillment-add-to-cart-button > div > div > button"
     );
-    const jsHandle = await elementHandle.getProperty("disabled");
-    const buttonDisableStatus = await jsHandle.jsonValue();
+    const buttonProperty = await buttonHandle.getProperty("disabled");
+    const buttonDisableStatus = await buttonProperty.jsonValue();
 
     if (buttonDisableStatus === false) {
       console.log(`stock available for ${titleValue}`);
@@ -135,6 +135,7 @@ function sleep(ms) {
 }
 
 const intervalFunc = async () => {
+  //splits scrapeAddresses in half
   const half = Math.ceil(scrapeAddresses.length / 2);
   const firstHalf = scrapeAddresses.slice(0, half);
   const secondHalf = scrapeAddresses.slice(-half);
@@ -149,7 +150,6 @@ const intervalFunc = async () => {
     BBScrape(secondHalf[i]);
   }
 };
-// intervalFunc();
 
 setInterval(() => {
   intervalFunc();
