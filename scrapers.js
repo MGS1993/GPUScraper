@@ -20,15 +20,45 @@ const mailOptions = {
 };
 
 async function BBScrape(url) {
+  console.time("loop time");
+
   const browser = await puppeteer.launch({
     args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
+      "--autoplay-policy=user-gesture-required",
+      "--disable-background-networking",
+      "--disable-background-timer-throttling",
+      "--disable-backgrounding-occluded-windows",
+      "--disable-breakpad",
+      "--disable-client-side-phishing-detection",
+      "--disable-component-update",
+      "--disable-default-apps",
       "--disable-dev-shm-usage",
-      "--disable-accelerated-2d-canvas",
+      "--disable-domain-reliability",
+      "--disable-extensions",
+      "--disable-features=AudioServiceOutOfProcess",
+      "--disable-hang-monitor",
+      "--disable-ipc-flooding-protection",
+      "--disable-notifications",
+      "--disable-offer-store-unmasked-wallet-cards",
+      "--disable-popup-blocking",
+      "--disable-print-preview",
+      "--disable-prompt-on-repost",
+      "--disable-renderer-backgrounding",
+      "--disable-setuid-sandbox",
+      "--disable-speech-api",
+      "--disable-sync",
+      "--hide-scrollbars",
+      "--ignore-gpu-blacklist",
+      "--metrics-recording-only",
+      "--mute-audio",
+      "--no-default-browser-check",
+      "--no-first-run",
+      "--no-pings",
+      "--no-sandbox",
       "--no-zygote",
-      "--single-process", // <- this one doesn't work in Windows
-      "--disable-gpu",
+      "--password-store=basic",
+      "--use-gl=swiftshader",
+      "--use-mock-keychain",
     ],
   });
   const page = (await browser.pages())[0];
@@ -46,10 +76,11 @@ async function BBScrape(url) {
   });
 
   try {
-    await page.setUserAgent(
+    page.setUserAgent(
       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4691.0 Safari/537.36"
     );
-    await page.goto(url);
+
+    await page.goto(url, { waitUntil: "domcontentloaded" });
 
     const titleHandle = await page.$("div.sku-title > h1");
     const titleHInnerText = await titleHandle.getProperty("textContent");
@@ -82,6 +113,7 @@ async function BBScrape(url) {
     await browser.close();
   } finally {
     await browser.close();
+    console.timeEnd("loop time");
   }
 }
 
@@ -103,12 +135,17 @@ const scrapeAddresses = {
   ],
 };
 
-const intervalFunc = (addressArray, scraper) => {
-  for (let i = 0; i <= addressArray.length - 1; i++) {
-    scraper(addressArray[i]);
+const intervalFunc = async () => {
+  // for (let i = 0; i <= addressArray.length - 1; i++) {
+  //   scraper(addressArray[i]);
+  // }
+  for (const address of scrapeAddresses.BB) {
+    await BBScrape(address);
   }
 };
+intervalFunc();
+// setInterval(() => {
+//   intervalFunc(scrapeAddresses.BB, BBScrape);
+// }, 5000);
 
-setInterval(() => {
-  intervalFunc(scrapeAddresses.BB, BBScrape);
-}, 45000);
+// BBScrape(scrapeAddresses.BB[0]);
